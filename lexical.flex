@@ -8,7 +8,7 @@
 LineTerminator = \r|\n|\r\n
 WhiteSpace = {LineTerminator} | [ \t\f]
 Identifier = [:jletter:] [:jletterdigit:]*
-
+DecIntegerLiteral = 0 | [1-9][0-9]*
 
 %%
  <YYINITIAL>{
@@ -49,23 +49,7 @@ Identifier = [:jletter:] [:jletterdigit:]*
     "<>" {System.out.println(yytext()+":box");}
 
     {Identifier} {System.out.println(yytext()+":IDENTIFIER");}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    {DecIntegerLiteral} {System.out.println(yytext()+":INTEGER_LITERAL");}
 
     . {/*ignore*/}
     {WhiteSpace} {/*ignore*/}

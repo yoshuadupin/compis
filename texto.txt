@@ -21,8 +21,8 @@ asterisk, multiply
 plus sign
 comma
 hyphen-minus, minus
-full stop, dot, point
-solidus, divide
+full stop, dot, point1221
+solidus, divide212
 =>
  ..
  **
@@ -69,3 +69,7 @@ left square bracket
 right square bracket
 left curly bracket
 right curly bracket
+Count X Get_Symbol Ethelyn Marion
+Snobol_4 X1 Page_Count Store_Next_Item
+120 012 12
+132312 d1231d12
