@@ -1,0 +1,71 @@
+"
+ #
+ &
+ '
+ (
+ )
+ *
+ +
+ ,
+ -
+ .
+ /
+name
+quotation mark
+number sign
+ampersand
+apostrophe, tick
+left parenthesis
+right parenthesis
+asterisk, multiply
+plus sign
+comma
+hyphen-minus, minus
+full stop, dot, point
+solidus, divide
+=>
+ ..
+ **
+ :=
+ /=
+ >=
+ <=
+ <<
+ >>
+ <>
+name
+arrow
+double dot
+double star, exponentiate
+assignment (pronounced:
+ ‘‘becomes’’)
+inequality (pronounced:
+ ‘‘not equal’’)
+greater than or equal
+less than or equal
+left label bracket
+right label bracket
+box
+:
+ ;
+ <
+ =
+ >
+ _
+ |
+ [
+ ]
+ {
+ }
+name
+colon
+semicolon
+less-than sign
+equals sign
+greater-than sign
+low line, underline
+vertical line
+left square bracket
+right square bracket
+left curly bracket
+right curly bracket
