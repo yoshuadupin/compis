@@ -12,21 +12,21 @@
   echo
 
   # Remove compile file of $1.flex
-  if [ -f ./$1.java ]; then
+  if [ -f ./Lexical.java ]; then
   
     set -e
-    echo Remove $1.java
+    echo Remove Lexical.java
     echo
-    rm $1.java
+    rm Lexical.java
 
   fi
 
-  # Remove trash compile file of $1.flex
-  if [ -f ./$1.java~ ]; then
+  # Remove trash compile file of Lexical.flex
+  if [ -f ./Lexical.java~ ]; then
 
-    echo Remove $1.java~
+    echo Remove Lexical.java~
     echo
-    rm $1.java~
+    rm Lexical.java~
 
   fi
 
