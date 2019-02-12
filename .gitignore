@@ -1,5 +1,6 @@
 # Compiled source #
 ###################
-*.java
-*.class
-*.java~
+Lexer.java
+Lexer.class
+Main.class
+Lexer.java~
