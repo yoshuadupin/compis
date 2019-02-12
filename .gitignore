@@ -1,5 +1,6 @@
 # Compiled source #
 ###################
-*.java
-*.class
-*.java~
+Lexical.java
+Lexical.class
+Main.class
+Lexical.java~
