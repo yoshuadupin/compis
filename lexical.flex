@@ -5,14 +5,36 @@
 %column
 %standalone
 
+%{
+      StringBuffer string = new StringBuffer();
+%}
+
+
+SpecialCharacter = "#"| "&"| "'"| "("| ")"| "*"| "+"| ","| "-"| "."| "/"| ":"| ";"| "<"| "="| ">"| "_"| "|"| "["| "]"| "{"| "}"
+IntegerLiteral = 0 | [1-9][0-9]*
+DecimalLiteral = {IntegerLiteral}"."{IntegerLiteral}
 LineTerminator = \r|\n|\r\n
 WhiteSpace = {LineTerminator} | [ \t\f]
 Identifier = [:jletter:] [:jletterdigit:]*
-DecIntegerLiteral = 0 | [1-9][0-9]*
+CharacterLiteral = \'([^\n\r\"\\])\'
 
+//LineTerminator = \r|\n|\r\n
+//InputCharacter = [^\r\n]
+//EndOfLineComment     = "--" {InputCharacter}* {LineTerminator}
+
+%state STRING 
+
+//dhaihdawoidhioawhd
 %%
  <YYINITIAL>{
-    \" {System.out.println(yytext()+":quotation mark");}
+    {Identifier} {System.out.println(yytext()+":IDENTIFIER");}
+    {IntegerLiteral} {System.out.println(yytext()+":INTEGER_LITERAL");}
+    {DecimalLiteral} {System.out.println(yytext()+":REAL_LITERAL");}
+    {CharacterLiteral} {System.out.println(yytext()+":CHARACTER_LITERAL");}
+   // {EndOfLineComment} {System.out.println(yytext()+":COMMENTS");}
+    \" { string.setLength(0); yybegin(STRING); }
+
+    //SPECIAL CHARACTER
     "#" {System.out.println(yytext()+":number sign");}
     "&" { System.out.println(yytext()+":ampersand");}
     "'" { System.out.println(yytext()+":apostrophe, tick");}
@@ -48,9 +70,19 @@ DecIntegerLiteral = 0 | [1-9][0-9]*
     ">>" {System.out.println(yytext()+":right label bracket");}
     "<>" {System.out.println(yytext()+":box");}
 
-    {Identifier} {System.out.println(yytext()+":IDENTIFIER");}
-    {DecIntegerLiteral} {System.out.println(yytext()+":INTEGER_LITERAL");}
-
-    . {/*ignore*/}
     {WhiteSpace} {/*ignore*/}
+    . {/*ignore*/}
+
  }
+ 
+ <STRING> {
+      \"             {   yybegin(YYINITIAL); 
+                     System.out.println("\""+string.toString()+"\":STRING_LITERAL"); }
+      [^\n\r\"\\]+   { string.append( yytext());}
+      \\t            { string.append('\t');}
+      \\n            { string.append('\n');}
+
+      \\r             { string.append('\r');} 
+      \\\"           { string.append('\"');}
+      \\             { string.append('\\');}
+}
