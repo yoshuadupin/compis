@@ -1,0 +1,846 @@
+/*Gramática del lenguaje de programación ADA95
+*Autor: Luis Felipe Borjas @ 26 Agosto 09 (fecha de inicio)
+*v. 2009083000
+*archivo basado en el artículo  http://www.linuxgazette.com/issue39/sevenich.html
+*incluido en los ejemplos de CUP que trae JFlex
+*REFERENCIAS:
+*==============
+*la gramática, basado en el manual de referencia de Ada95(http://www.adahome.com/rm95/)
+*y en el BNF de Ada-95 (http://www.seas.gwu.edu/~adagroup/ada95-syntax/)
+*
+*el paper:    An LALR(1) Grammar  for  (Revised) Ada
+ de: G. Persch, G. Winterstein, S. Drossopoulou, M. Dausmann
+*al cual me referiré de ahora en adelante como 'p85-persch'
+
+*/
+
+/*SECCIÓN DE DECLARACIONES PRELIMINARES*/
+
+import java_cup.runtime.*;
+import java.util.Stack;
+import java.util.ArrayList;
+import java.util.HashMap;
+/*Métodos que van en la clase de acciones: Poner acá todo lo que debería ser accesible por la gramática*/
+action code{:
+
+/**The current symbol table*/
+/**Variables globales para el control de los subprogramas*/
+/*Variables para la generación de código intermedio*/
+//las instrucciones
+//los temporales cf: http://en.wikipedia.org/wiki/MIPS_architecture
+/**Para obtener el siguiente temporal libre*/
+/**La lista de saltos de salida en el loop actual (sólo funciona para salidas inmediatas)*/
+/**Ir imprimiendo el código intermedio al generarlo*/
+/*Para agregar cuádruplos a la lista. Sólo generar el cuádruplo si no hay errores.*/
+
+
+/**Función que devuelve el String que representa a un branch de código intermedio*/
+
+/**Convierte una literal booleana en un número*/
+/**Devuelve la lista de saltos de un valor booleano*/
+
+/**Dada una lista de saltos completa los correspondientes cuádruplos con el salto proveido*/
+
+/**Genera código para la asignación, recibe un ParserResult que corresponde a la expresión
+   si la expresión tiene backpatch, y éste tiene una listaVerdadera o listaFalsa vacías, 
+   genera además el código para completarlas y darles valor
+*/
+
+ /**Esta función chequea que un subprograma que tiene nombre al principio y final tenga exactamente el mismo nombre
+   * @param start la palabra del inicio
+     @param sline, scolumn el left y right del símbolo start
+     @param end la palabra del final
+     @param eline, ecolumn el left y right del símbolo end
+ */
+/**Método para comprobar errores semánticos de tipo. Los agrega también a la lista de errores. Se vale del método equals de las clases
+   que heredan de Type.
+   @param expected el tipo esperado
+   @param found el tipo encontrado
+   @param foundLine, foundColumn, etc la línea y columna donde se encuentra la declaración.
+*/
+
+/**Método para determinar si un símbolo está o no declarado*/
+
+/*Agrega un error a los errores del parser*/
+
+
+:};
+
+/* Métodos que van en la clase del parser */
+parser code {:
+    /**Lista donde se guardan los errores encontrados*/
+    public ArrayList<String> errores=new ArrayList<String>();
+    /**Método para devolver tanto los errores del parser como los  del lexer, si los hay*/
+    public ArrayList<String> getErrores(){
+		if(getScanner() instanceof Ada95Lexer){
+			errores.addAll(((Ada95Lexer)getScanner()).lexical_errors);		
+		}
+		return errores;
+
+	}
+    /**Método que devuelve las advertencias, hasta esta versión, sólo el lexer tiene advertencias...*/
+    public ArrayList<String> getAdvertencias(){
+	ArrayList<String> warnings=new ArrayList<String>();
+	if(getScanner() instanceof Ada95Lexer){
+		warnings.addAll(((Ada95Lexer)getScanner()).lexical_warnings);		
+	}
+	return warnings;
+		
+    }
+    boolean EOFReported=false;
+    Stack<String> unClosed=new Stack<String>();
+    public String getUnclosed(){return unClosed.pop();}
+    public void setUnclosed(String faltante,String abierto, int line, int col){
+	String addToUnClosed="'"+faltante+"'"+" faltante para el '"+abierto+"' abierto en línea "+(line+1)+", columna "+(col+1);
+	unClosed.push(addToUnClosed);
+
+    }
+    public void emptyLastUnclosed(){String tempUnClosed=unClosed.pop();tempUnClosed=null;}
+    	
+    /**Guardar los errores en un stringBuffer*/
+    //StringBuffer errorMessages=new StringBuffer();
+    /* Change the method report_error so it will display the line and
+       column of where the error occurred in the input as well as the
+       reason for the error which is passed into the method in the
+       String 'message'. */
+    public void report_error(String message, Object info) {
+   	
+	/*If the EOF was already reported, just return (to avoid that horrible unexpected EOF...)*/
+	if(EOFReported)
+		return;
+        /* Create a StringBuffer called 'm' with the string 'Error' in it. */
+        StringBuffer m = new StringBuffer();
+        /* Add to the end of the StringBuffer error message created in
+           this method the message that was passed into this method. */
+	if(message.equalsIgnoreCase("Syntax error")){
+		message="Error Sintáctico  ";
+	}else if(message.equalsIgnoreCase("Couldn't repair and continue parse")){
+		message="Error ";
+	}	
+        m.append(message);
+   
+        /* Check if the information passed to the method is the same
+           type as the type java_cup.runtime.Symbol. */
+        if (info instanceof java_cup.runtime.Symbol) {
+            /* Declare a java_cup.runtime.Symbol object 's' with the
+               information in the object info that is being typecasted
+               as a java_cup.runtime.Symbol object. */
+            java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
+   
+            /* Check if the line number in the input is greater or
+               equal to zero. */
+            if (s.left >= 0) {                
+                /* Add to the end of the StringBuffer error message
+                   the line number of the error in the input. */
+                m.append(": en línea "+(s.left+1));   
+                /* Check if the column number in the input is greater
+                   or equal to zero. */
+                if (s.right >= 0) {                   
+                    /* Add to the end of the StringBuffer error message
+                       the column number of the error in the input. */
+                    m.append(", columna "+(s.right+1));
+		   //ver si se puede sacar el texto:
+		   if(getScanner() instanceof Ada95Lexer){
+			m.append("; no se esperaba '"+((Ada95Lexer)getScanner()).getCurrentText()+"'");
+		   }
+		}
+	///guardar el error en la variable de errores:
+            }else if(s.toString().equals("#0")){
+			if(unClosed.empty()){				
+				m.append(": final de archivo inesperado");
+			}else{
+				m.append(": "+getUnclosed());
+				EOFReported=true;
+			}
+
+		}
+
+        }
+   
+   
+        /* Print the contents of the StringBuffer 'm', which contains
+           an error message, out on a line. */
+        //System.err.println(m);
+	errores.add(m.toString());
+	/*Guardar el error en el buffer, mas un salto de línea:*/
+	//	errorMessages.append(m+"\n");
+    }
+   
+    /* Change the method report_fatal_error so when it reports a fatal
+       error it will display the line and column number of where the
+       fatal error occurred in the input as well as the reason for the
+       fatal error which is passed into the method in the object
+       'message' and then exit.*/
+    public void report_fatal_error(String message, Object info) {
+        report_error(message, info);
+
+        //System.exit(1);
+    }
+ /**La función que guarda errores para luego ser impresos por el front-end
+*@param line, column la línea y columna del error/
+public void push_error(int line, int column){
+	errores.add(new String(String.valueOf(line)+"_"+String.valueOf(column)));
+	System.out.println(errores);
+}*/
+
+:};
+
+/*SECCIÓN DE DECLARACIÓN DE TERMINALES Y NO TERMINALES*/
+//primero, las terminales sin valor de retorno:
+// Las funciones incorporadas:
+terminal PUT, GET;
+// los tipos primitivos:
+terminal BOOLEAN, INTEGER, FLOAT;
+// Palabras reservadas:
+terminal ABORT, ABS, ABSTRACT, ACCEPT, ACCESS, ALIASED, ALL, AND, ARRAY, AT;
+terminal BEGIN, BODY;
+terminal CASE, CONSTANT;
+terminal DECLARE, DELAY, DELTA, DIGITS, DO;
+terminal ELSE, ELSIF, END, ENTRY, EXCEPTION, EXIT;
+terminal FOR, FUNCTION;
+terminal GENERIC, GOTO;
+terminal IF, IN, IS;
+terminal LIMITED, LOOP;
+terminal MOD;
+terminal NEW, NOT, NULL;
+terminal OF, OR, OTHERS, OUT;
+terminal PACKAGE, PRAGMA, PRIVATE,  PROCEDURE, PROTECTED;
+terminal RAISE, RANGE, RECORD, REM, RENAMES, REQUEUE, RETURN, REVERSE;
+terminal SELECT, SEPARATE, SUBTYPE;
+terminal TAGGED, TASK, TERMINATE, THEN, TYPE;
+terminal UNTIL, USE;
+terminal WHEN, WHILE, WITH;
+terminal XOR;
+//2. Delimitadores
+terminal CONCATENATE;
+terminal TICK;
+terminal LEFTPAR, RIGHTPAR;
+terminal MULTIPLY, DIVIDE;
+terminal PLUS, MINUS;
+terminal COMMA;
+terminal POINT;
+terminal COLON;
+terminal SEMICOLON;
+terminal GT, LT, EQUAL, INEQUALITY, GTEQ, LTEQ;
+terminal VERTICAL_LINE;
+terminal ARROW;
+terminal DOUBLEDOT;
+terminal EXPONENTIATE;
+terminal ASSIGNMENT;
+terminal LEFTLABEL, RIGHTLABEL;
+terminal BOX;
+
+
+//los diz-que-operadores:
+terminal AND_THEN, OR_ELSE;
+
+terminal String IDENTIFIER;
+terminal Integer INTEGER_LITERAL;
+terminal Float	FLOATING_POINT_LITERAL;
+terminal String CHARACTER_LITERAL;
+terminal String STRING_LITERAL;	
+terminal Boolean BOOLEAN_LITERAL;
+
+/*Sección de las no-terminales;*/
+//INICIALES:
+non terminal goal, placeholder, m, n;
+//lexicos y varios
+//de p85-persch, pag 87
+non terminal constant_option;
+non terminal primitive_type,numeric_type;
+non terminal identifier, identifier_list, argument_list, argument;
+non terminal declaration, object_declaration, initialization_option, number_declaration;
+non terminal type_declaration, discriminant_part_option, type_definition;
+non terminal subtype_declaration, subtype_indication;
+//de p85-persch, pag 88
+non terminal subtype_indication_with_constraint, range_constraint, range;
+non terminal accuracy_constraint, floating_point_constraint, range_constraint_option, fixed_point_constraint;
+non terminal discrete_range;
+non terminal record_type_definition, component_list;
+//de p85-persch, pag 89
+non terminal component_declaration_list, variant_part_option, component_declaration, discriminant_part;
+non terminal discriminant_declaration_list, discriminant_declaration;
+non terminal variant_part, variant_list;
+non terminal choice, choice_list;
+non terminal incomplete_type_declaration;
+non terminal declarative_part, declarative_item_list, declarative_item;
+//de p85-persch, pag 90
+non terminal name;
+non terminal selected_component, literal, aggregate, component_association_list, component_association;
+non terminal expression;
+//de p85-persch, pag 91
+non terminal and_expression, or_expression, xor_expression, andthen_expression, orelse_expression;
+non terminal relation;
+non terminal membership_operator;
+non terminal simple_expression, term_list, term, factor;
+non terminal primary;
+non terminal relational_operator, adding_operator, unary_operator, multiplying_operator;
+non terminal qualified_expression, allocator;
+non terminal sequence_of_statements, statement;
+//de p85-persch, pag 92
+non terminal label_list;
+non terminal simple_statement, compound_statement;
+non terminal label;
+non terminal null_statement, assignment_statement;
+non terminal if_statement, elsif_list, else_option, condition, if_header;
+non terminal loop_statement, basic_loop;
+//de p85-persch, pag 93:
+non terminal iteration_clause_option;
+non terminal block, declare_part_option;
+non terminal exit_statement, name_option, when_option;
+non terminal return_statement, goto_statement;
+non terminal subprogram_declaration, subprogram_specification, subprogram_specification_is;
+//de p85-persch, pag 94:
+non terminal designator, operator_symbol;
+non terminal formal_part, formal_part_option;
+non terminal parameter_declaration_list, parameter_declaration;
+non terminal mode;
+non terminal subprogram_body;
+non terminal designator_option;
+non terminal procedure_call,function_call;
+non terminal actual_parameter_part;
+//de p85-persch, pag 95:
+//de p85-persch, pag 96:
+non terminal compilation, compilation_list;
+//de p85-persch, pag 97:
+non terminal compilation_unit;
+//de p85-persch, pag 98:
+non terminal code_statement;
+
+/*SECCIÓN DE PRECEDENCIA Y ASOCIATIVIDAD DE TERMINALES*/
+//ordenados de menor a mayor precedencia:
+precedence left AND;
+precedence left OR;
+precedence left XOR;
+precedence left EQUAL;
+precedence left INEQUALITY, GT, LT, GTEQ, LTEQ;
+precedence left PLUS, MINUS, CONCATENATE;
+precedence left MULTIPLY, DIVIDE, MOD, REM;
+precedence left EXPONENTIATE, NOT, ABS;
+precedence left AND_THEN, OR_ELSE;
+//precedence left IN, NOT_IN;
+
+/*SECCIÓN DE LA GRAMÁTICA*/
+start with goal;
+//elementos opcionales comunes:
+//empezamos con goal, que será una unidad de compilación:
+
+goal  ::=	compilation:g {:System.out.println("QUE PEDOS");:}
+	;
+//works as a marker, as described in the book, to let action code be executed at otherwise impossible places (like the end)
+placeholder ::= ;
+/*M y N son dos producciones de ayuda: no producen nada pero hacen un par de cosas para ayudar a backpatching
+M agarra el siguiente cuádruplo en el flujo de instrucciones
+N devuelve una lista de siguientes y genera un goto vacío
+*/
+m	::=/*lambda*/ {::}
+	; 
+n	::=/*lambda*/ {::}
+	;
+
+//RM-2  LEXICAL ELEMENTS AND COMPILER-SPECIFIC RULES:
+numeric_type		::=	INTEGER	{::}
+			|	FLOAT   {::}
+			;
+primitive_type 		::=	BOOLEAN {::}
+			|	numeric_type:t {::}
+			;
+identifier	::=	IDENTIFIER:i {::}
+		;
+argument_list	::=	argument:a
+			{::}
+		|	argument_list:l COMMA argument:a
+			{::}
+		;
+argument	::=	expression:e {::}
+		|	identifier ARROW expression
+		; 
+
+//RM-3: DECLARATIONS
+declaration	::= type_declaration
+		|	subprogram_declaration
+		|	subtype_declaration
+		|	number_declaration
+		;
+//de p85-persch, pag 87
+/*si las variables están inicializadas, chequear los tipos, y si concuerdan, ponerla en la tabla de símbolos actual */
+initialization_option	::=	| ASSIGNMENT expression:e {::}
+			;
+number_declaration	::=	identifier:i COLON CONSTANT ASSIGNMENT expression:o SEMICOLON
+				{::}
+			|	identifier_list:i COLON CONSTANT ASSIGNMENT expression:o SEMICOLON
+				{::}
+			;
+identifier_list		::=	identifier:i COMMA identifier:j 
+				{::}
+			|	 identifier_list:i COMMA identifier:j
+				{::}
+			;
+/*TODO: ver qué ondas con la discriminant part: cf. en.wikibooks.org/wiki/Ada_Programming/Types/record */
+type_declaration	::=	TYPE identifier:i 
+				 discriminant_part_option:p IS {::} type_definition:t SEMICOLON 
+				{::}
+			|	incomplete_type_declaration
+			;
+discriminant_part_option ::=	| discriminant_part
+			;
+type_definition		::=	record_type_definition:r {::}
+			;
+subtype_declaration	::=	SUBTYPE identifier:i IS subtype_indication:s SEMICOLON
+				{::}
+			;
+/*Searching for a name actually checks if the type is declared*/
+subtype_indication	::=	name:n {::}
+			|	subtype_indication_with_constraint:c {::}
+			|	primitive_type:t {::}
+			;
+//de p85-persch, pag 88
+//TODO: define this, the constraints must be of the same type as the name...
+subtype_indication_with_constraint ::=	name range_constraint
+				   |	name accuracy_constraint
+				   |	numeric_type:n range_constraint {::}
+				   |	FLOAT 	accuracy_constraint {::}
+		         	   ;
+range_constraint		   ::= RANGE range
+				   ;
+range	::=	simple_expression:t DOUBLEDOT simple_expression:f
+		{::}
+	;
+//quité la enumeration type definition
+accuracy_constraint		::=	floating_point_constraint
+				|	fixed_point_constraint
+				;
+floating_point_constraint	::=	DIGITS simple_expression range_constraint_option
+				;
+range_constraint_option		::=	| range_constraint
+				;
+fixed_point_constraint		::=	DELTA simple_expression range_constraint_option
+				;
+//no pongo lo de array ni index
+/*Sólo vamos a permitir rangos sencillos...*/
+discrete_range			::=	name range_constraint_option
+				|	numeric_type range_constraint_option
+				|	range:r {::}
+				;
+record_type_definition		::=	RECORD:r  
+					{::} 
+						component_list:l //returns a symbol table
+						{::}
+					END RECORD 
+				;
+/*TODO: ver qué ondas con la variant part*/
+component_list ::=	component_declaration_list:l  variant_part_option 
+				|	NULL SEMICOLON
+				;
+//de p85-persch, pag 89			
+/*TODO: check that this works, having code in a lambda production...*/
+component_declaration_list	::=	{::}
+				|	 component_declaration_list:l component_declaration:c
+					{::}
+				;
+variant_part_option		::=	| variant_part
+				;
+component_declaration		::=	discriminant_declaration:d  SEMICOLON 
+				|	error 
+				;
+discriminant_part		::=	LEFTPAR discriminant_declaration_list RIGHTPAR
+				;
+discriminant_declaration_list	::=	discriminant_declaration
+				|	discriminant_declaration_list SEMICOLON discriminant_declaration
+				;
+discriminant_declaration	::=	identifier:i COLON subtype_indication:s initialization_option:o
+					{::}
+				|	identifier_list:l COLON subtype_indication:s initialization_option:o
+					{::}
+				;
+variant_part 			::=	CASE name IS variant_list END CASE SEMICOLON
+				;
+variant_list			::=	| variant_list WHEN choice_list ARROW component_list
+				;
+choice				::=	simple_expression
+				|	OTHERS
+				|	name range_constraint
+				|	range
+				;
+choice_list			::=	choice 
+				|	choice_list VERTICAL_LINE choice
+				;
+incomplete_type_declaration	::=	TYPE identifier discriminant_part_option SEMICOLON
+				; 
+declarative_part		::=	declarative_item_list
+				;
+declarative_item_list		::=	| declarative_item_list declarative_item
+				;
+declarative_item		::=	declaration
+				|	subprogram_body
+				|	error SEMICOLON 
+				;
+//de p85-persch, pag 90
+//"No vamos a manejar atributos", por tanto, quité la regla que produce attribute
+//quité la de indexed_component:
+/*Siempre que se llama a name se asume que ya está en la tabla de símbolos, por tanto, lo buscaremos aquí. Como un selected component
+ya busca en la tabla de símbolos y también una llamada a función, así las dejaremos. (Además, éstas se sirven de name!)*/
+name				::=	identifier:i 
+					{::}
+				|	selected_component:s {::}
+				|	function_call:f {::}
+				|	operator_symbol:i 
+					{::}
+				;
+/*The only case of this is in records, isn't it?*/
+selected_component		::=	name:n POINT identifier:i 
+					{::}
+				
+				|	name:n POINT ALL {::}
+				|	name POINT operator_symbol
+				;
+//pongo acá los string literals?
+literal				::=	INTEGER_LITERAL:i	{:}
+				|	FLOATING_POINT_LITERAL:f	{::}
+				|	CHARACTER_LITERAL:c	{::}
+				|	BOOLEAN_LITERAL:b	
+					{::}
+				|	NULL:n		  	{::}
+					
+				;
+aggregate			::=	LEFTPAR component_association_list RIGHTPAR
+				|	LEFTPAR choice_list ARROW expression RIGHTPAR
+				;
+component_association_list	::=	component_association COMMA component_association
+				|	component_association_list COMMA component_association
+				;
+component_association		::=	expression
+				|	choice_list ARROW expression
+				;
+expression			::=	relation:e 	{::}
+				|	and_expression:e {::}
+				|	or_expression:e {::}
+				|	xor_expression:e {::}
+				|	andthen_expression:e {::}
+				|	orelse_expression:e {::}
+				;
+//de p85-persch, pag 91
+and_expression			::=	relation:p AND m:m relation:q
+					{::}
+				|	and_expression:p AND m:m relation:q
+					{::}
+				;
+or_expression			::=	relation:p OR m:m relation:q
+					{::}
+				|	or_expression:p OR m:m relation:q
+					{::}
+				;
+xor_expression			::=	relation:p XOR relation:q
+					{::}
+				|	xor_expression:p XOR relation:q
+					{::}
+				;
+andthen_expression		::=	relation:p AND_THEN m:m relation:q {::}
+				|	andthen_expression:p AND_THEN m:m relation:q
+					{::}
+				;
+orelse_expression		::=	relation:p OR_ELSE m:m relation:q
+					{::}
+				|	orelse_expression:p OR_ELSE m:m relation:q
+					{::}
+					
+				;
+/**Acá cualquier cosa podría subir, pero sólo las boolean literals llevan su lista de backpatch y son BooleanType, así que otras
+no pasarían el filtro del chequeo de tipos*/
+relation			::=	simple_expression:s 
+					{::}
+				|	simple_expression:p relational_operator:o simple_expression:q
+					{::}
+				|	simple_expression:p membership_operator range:q
+					{::}
+				|	simple_expression:p membership_operator subtype_indication:s
+					{::}
+
+				;
+membership_operator		::=	IN
+				|	NOT IN
+				;
+simple_expression		::=	term_list:t
+		
+				|	unary_operator:o term_list:t
+					{::}	
+				;
+term_list			::=	term:t
+					{::}
+				|	term_list:p adding_operator:o term:q
+					{::}
+				;
+term				::=	factor:f
+					{::}
+				|	term:p multiplying_operator:o factor:q
+					{::}
+				;
+/*These must be numeric: if they're not, pass a null up... Else, pass the parser result up*/
+factor				::=	primary:p
+					{::}
+				|	primary:p EXPONENTIATE primary:q
+					{::}
+				;
+primary				::=	literal:l {::}
+				|	aggregate
+				|	name:n
+					{::}
+				|	allocator
+				|	qualified_expression
+				|	LEFTPAR expression:e RIGHTPAR {::}
+				;
+relational_operator		::=	EQUAL {::}
+				|	INEQUALITY {::}
+				|	LT	{::}
+				|	GT	{::}
+				|	GTEQ{::}
+				|	LTEQ {::}
+				;
+adding_operator			::=	PLUS {::}	
+				|	MINUS {::}
+				|	CONCATENATE {::}
+				;
+unary_operator			::=	PLUS:p {::}
+				|	MINUS:m {::}
+				|	NOT:n	{::}
+				|	ABS:a	{::}
+				;
+multiplying_operator		::=	MULTIPLY {::}
+				|	DIVIDE {::}
+				|	MOD {::}
+				|	REM {::}
+				;
+qualified_expression		::=	name TICK LEFTPAR expression RIGHTPAR
+				|	name TICK aggregate
+				;
+allocator			::=	NEW name
+				;
+sequence_of_statements		::=	statement:s {::}
+				|	sequence_of_statements:q m:m statement:s
+					{::}
+				;
+//usaremos pragma? De ser así, aquí también produciría pragma:
+statement			::=	label_list simple_statement:s {::}
+				|	label_list compound_statement:c {::}
+				|	error 
+				;
+//de p85-persch, pag 92:
+label_list			::=	| label_list label
+				;
+simple_statement		::=	null_statement:n
+					{::}
+				|	assignment_statement:a
+					{::}
+				|	exit_statement:e
+					{::}
+				/*Al encontrar una sentencia de retorno, agregar la expresión. Si viene null es porque 
+				ya fue reportado un error antes. Idea: poner errorTypes en este caso. */
+				|	return_statement:e 
+					{::}
+				|	goto_statement:g
+					{::}
+				|	procedure_call:p
+					{::}
+				|	code_statement:c
+					{::}
+				;
+compound_statement		::=	if_statement:s {::}
+				|	loop_statement:s 
+						{::}
+				|	block{::}
+				;
+label				::=	LEFTLABEL identifier RIGHTLABEL
+				;
+null_statement			::=	NULL SEMICOLON
+				;
+/*Revisar que la expression y el name coinciden*/
+assignment_statement		::=	name:n ASSIGNMENT expression:e SEMICOLON
+					{::}
+				;
+/*Encontrar un if o un elsif significa encontrar una nueva branch*/
+if_header			::= 	IF:i condition:c THEN 
+					{::}
+				;
+if_statement			::=	if_header:header	
+						else_option:els 
+					END IF SEMICOLON 
+					{::}
+				|	if_header:header
+						n:n m:mdos  elsif_list:elsif
+						else_option:els
+					END IF SEMICOLON
+					{::} 
+				;
+
+elsif_list			::=	ELSIF condition:c THEN m:m sequence_of_statements:s
+					{::}
+				
+					| elsif_list:elsif n:n ELSIF m:muno condition:c THEN m:mdos sequence_of_statements:s
+					 {::} 
+				;
+/*Se asume que toda sentencia (y toda lista de sentencias) retorna su listaSiguiente*/
+else_option			::=	| n:n ELSE m:m sequence_of_statements:s
+				{::}
+				;
+condition			::=	expression:e {::}
+				;
+//acá iría el bloque case, seguido de la alternative_list
+loop_statement			::=	iteration_clause_option:o
+					 m:m basic_loop:s SEMICOLON
+					{::}
+					placeholder
+					{::}
+				|	identifier:i COLON iteration_clause_option:o
+					m:m basic_loop:s identifier:j SEMICOLON
+					{::}	
+				;
+basic_loop			::=	LOOP:l
+					{::}
+						sequence_of_statements:s 
+					END LOOP
+					{::}  
+				;
+//de p85-persch, pag 93
+/*Validar que no exista el id, crear un nuevo scope.*/
+iteration_clause_option		::=
+				|	FOR identifier:i IN discrete_range:r m:m
+					{::}
+				|	FOR identifier:i IN REVERSE discrete_range:r m:m
+					{::}
+				|	WHILE m:m condition:c 
+					 {::} 
+				;
+block				::=	declare_part_option BEGIN:b 
+						sequence_of_statements 
+					END SEMICOLON  
+				|	identifier:i  COLON declare_part_option
+						 BEGIN 						 
+							sequence_of_statements 
+						 END identifier SEMICOLON  
+				;
+declare_part_option		::=	
+				|	 DECLARE declarative_part
+				;
+/*Para labels: revisar que la label exista*/
+exit_statement			::=	EXIT name_option:n when_option:w SEMICOLON
+					{::}
+				;
+name_option			::=	| name:n {:RESULT=n;:}
+				;
+when_option			::=	| WHEN m:m condition:c 
+					 {::} 
+				;
+return_statement		::=	RETURN SEMICOLON
+					{::}
+				|	RETURN expression:e SEMICOLON 
+					{::}
+				;
+goto_statement			::=	GOTO name SEMICOLON 
+				;
+//no vamos a usar generics, o sí? En este caso, acá faltarían dos producciones
+subprogram_declaration		::=	subprogram_specification SEMICOLON {::}
+				;	 
+/*Esta es una de las cosas que cambiaría de usar tablas de símbolos en las funciones. Por ahora asumiré que las formal_part
+devuelven una lista de tipos, ya que sólo me importan los tipos...*/	
+subprogram_specification	::=	PROCEDURE identifier:i formal_part_option:f
+					{::}
+				|	FUNCTION designator:d formal_part_option:f RETURN subtype_indication:s
+					{::}
+				;
+subprogram_specification_is	::=	PROCEDURE identifier:i IS 
+					{::}
+	
+				|	PROCEDURE identifier:i formal_part:f IS 
+					{::}
+				|	FUNCTION designator:i formal_part_option:f RETURN subtype_indication:s IS 
+					{::}
+				;
+//de p85-persch, pag 94
+designator			::=	identifier:i {::} 
+				|	operator_symbol:o {::}
+				;
+operator_symbol			::=	STRING_LITERAL:s 
+					{::}
+				;
+formal_part			::=	LEFTPAR parameter_declaration_list:l  RIGHTPAR
+				;
+formal_part_option		::=	| formal_part:f {::}
+				;
+parameter_declaration_list	::=	parameter_declaration:d {::}
+				|	parameter_declaration_list:l SEMICOLON parameter_declaration:d
+					{::}
+				;
+parameter_declaration		::=	identifier:i COLON mode:m subtype_indication:s initialization_option:o
+					{::}
+				|	identifier_list:l COLON mode:m subtype_indication:s initialization_option:o
+					{::}
+				;
+mode				::=	{::} //el modo por defecto es in
+				|	IN {::}
+				|	OUT {::}
+				|	IN OUT {::}
+				;
+subprogram_body			::=	subprogram_specification_is:s 
+						declarative_part 
+					BEGIN:b
+						sequence_of_statements:t
+					END designator_option:e SEMICOLON
+					//salir del subprograma:
+					{::} placeholder 
+					{::}
+				;
+designator_option		::=	| designator:d {::}
+				;
+//estas parecen estar incompletas: cf scc 6.4 (pag 149 del pdf) del ADA-RM
+/*N.B todas, excepto las primeras, producciones de procedure y function call las agregué yo, no salen en p85-persch
+* y así pasó con actual_parameter_part, parameter_association_list, parameter_association, formal_parameter_option
+* y explicit_actual_parameter
+*/
+procedure_call			::=	name:n SEMICOLON 
+					{::}
+				//TODO: poner en la tabla de símbolos, inicialmente, todas las sobrecargas de put y get. Y definir una función para sacarlos
+				//ya que no se permiten en la ST nombres repetidos...
+				|	PUT actual_parameter_part:p SEMICOLON
+					{::}
+				|	GET LEFTPAR identifier:i RIGHTPAR SEMICOLON
+					{::}
+ 				|	GET LEFTPAR selected_component:i RIGHTPAR SEMICOLON
+					{::}
+				;
+/*Llamadas a funciones: si no tiene parámetros, sólo buscar la función (y que sea una que no tenga parámetros, eh)
+Si sí, habrá también que ver que cumplan con el dominio.*/
+function_call			::=	name:n LEFTPAR RIGHTPAR
+				 	{::}
+				|	name:n actual_parameter_part:p 
+					{::}
+				;
+/*Esta no me parece tan poderosa:
+put_call	::= PUT LEFTPAR actual_parameter_list RIGHTPAR
+y simil para get
+pero quería sólo dejar que pusieran expresiones booleanas, enteras y float allí...
+supongo que queda para el semántico...
+*/
+
+actual_parameter_part		::=	 LEFTPAR argument_list:a RIGHTPAR {::}			
+				;
+//de p85-persch, pag 95: quité todo
+
+/*acá irían las renaming declaration, y comienza lo relacionado con tasks:
+* entry, accept, select y abort
+*/
+//de p85-persch, pag 96:
+/*acá sigue lo de tasks: entry, delay, select y abort*/
+compilation			::=	compilation_list
+				;
+//a esta le falta una tal lista de pragmas, pero como no manejaremos pragmas, no la pongo:
+compilation_list		::= 	compilation_unit
+				|	compilation_list compilation_unit
+				|	error
+				;
+//de p85-persch, pag 97:
+compilation_unit		::=	subprogram_declaration
+				|	subprogram_body					
+				;
+//de p85-persch, pag 98:
+code_statement			::=	qualified_expression SEMICOLON
+				;				
